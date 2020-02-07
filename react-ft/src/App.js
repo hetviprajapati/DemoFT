@@ -1,12 +1,10 @@
 import React from 'react';
-import logo from './logo.svg';
-import './App.css';
-
+import First from './Container/first';
 function App() {
   return (
     <div className="App">
      My First FT APP
-       Hello
+     <First></First>
     </div>
   );
 }
