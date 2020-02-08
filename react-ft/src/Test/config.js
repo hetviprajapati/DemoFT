@@ -11,6 +11,7 @@ let types = {
     2: 'checkbox',
     3: 'button'
 };
+
 let typeObj = [
     {name: 'name', key: 'test', type: types[0]},
     {name: 'email', key: 'test@gmail.com', type: types[0]},
@@ -34,7 +35,6 @@ const sleeping = (time) => {
         setTimeout(resolve, time);
     })
 }
-
 const guestFill = async (driver, typeObj, toClean = false) => {
     await typeObj.map(async (arg) => await callMe({driver, ...arg}))
     // if (toClean) {
