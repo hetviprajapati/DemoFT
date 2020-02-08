@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 let Config=require('./config');
 let Guest =require('./GuestLogin');
 
@@ -84,7 +83,8 @@ const checkURL = async (url, driver) => {
 }
 
 module.exports = {callMe};
-=======
 
 
->>>>>>> origin/master
+
+
+
