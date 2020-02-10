@@ -15,7 +15,7 @@ let  types = {
         let  GuestLoginOBJ =await Guest.guestLogin(types);
         await GuestLoginOBJ.map(async (arg) => await callMe({driver, ...arg}))
 
-        await sleeping(5000);
+        await sleeping(10000);
 
         let GuestHomeOBJ=await  Guest.guestHome(driver,types);
         await GuestHomeOBJ.map(async (arg) => await callMe({driver, ...arg}))
@@ -56,7 +56,6 @@ const callMe = async (arg) => {
                     await arg.driver.quit();
                     throw "URL not matched for " + arg.name;
                 }
-
                 break;
             default:
                 break;

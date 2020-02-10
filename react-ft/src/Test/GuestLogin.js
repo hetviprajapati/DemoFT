@@ -36,8 +36,8 @@ const guestTabSize=async (types)=>{
         {name: 'height', key: '3000', type:types[0]},
         {name:'panels-12',type:types[2]},
         {name:'swingDirection-left',type:types[2]},
-        {name:'swingInOrOut-Outswing',type:types[2]},
-        {name:'nextTitle',type:types[3],url: Config.Base_URL + '?tab=color&'}
+    //    {name:'swingInOrOut-Outswing',type:types[2]},
+       // {name:'nextTitle',type:types[3],url: Config.Base_URL + '?tab=color&'}
     ];
     return GuestTabSize
 }

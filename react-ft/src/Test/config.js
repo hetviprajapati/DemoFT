@@ -8,7 +8,8 @@ const ConfigFunc= async  () => {
     let driver = await new webdriver.Builder().withCapabilities(webdriver.Capabilities.chrome()).build();
     await driver.get(Base_URL);
     await driver.manage().window().maximize();
-
+    // const title=driver.getTitle();
+    // console.log(title);
     return driver
 }
 
