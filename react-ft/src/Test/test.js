@@ -9,21 +9,23 @@ let  types = {
 };
 
 (async function ExecuteALL() {
+    let p;
     try{
         let driver = await Config.ConfigFunc();
 
         let  GuestLoginOBJ =await Guest.guestLogin(types);
-        await GuestLoginOBJ.map(async (arg) => await callMe({driver, ...arg}))
+        await  Promise.all(GuestLoginOBJ.map(async (arg) => await callMe({driver, ...arg})));
 
-        await sleeping(10000);
+        let GuestHomeOBJ=await  Guest.guestHome(driver,types,0,"Aluminium Panoramic Door","Width 15 Meters, Height 3.0 Meters");
+        await Promise.all(GuestHomeOBJ.map(async (arg) => await callMe({driver, ...arg})));
 
-        let GuestHomeOBJ=await  Guest.guestHome(driver,types);
-        await GuestHomeOBJ.map(async (arg) => await callMe({driver, ...arg}))
-
-        await sleeping(20000);
-
-        let GuestTabSizeOBJ=await  Guest.guestTabSize(types);
-        await GuestTabSizeOBJ.map(async (arg) => await callMe({driver, ...arg}))
+        let GuestTabSizeOBJ=  Guest.guestTabSize(types);
+        await Promise.all(GuestTabSizeOBJ.map(async (arg) =>{
+            // p=await sleeping(5000, "Before " + arg.name);
+            console.log("***********GuestTabSizeOBJ "+arg.name)
+            p= await callMe({driver, ...arg})
+            return p;
+        }));
 
     }catch (e) {
         console.log("---ERROR---",e)
@@ -31,7 +33,7 @@ let  types = {
 })();
 
 const callMe = async (arg) => {
-    let p;
+    let p,pc;
     try {
         switch (arg.type) {
             case types[0] :
@@ -43,19 +45,26 @@ const callMe = async (arg) => {
                 p.click();
                 break;
             case types[2] :
-                await sleeping(10000);
+               await  sleeping(10000, "Before " + arg.name)
+                if (arg.scrollDown) {
+                    await arg.driver.executeScript(`window.scrollBy(0,${arg.scrollDown})`);
+                    console.log("----Scrolling Down-----");
+                }
                 p = await arg.driver.findElement(Config.webdriver.By[arg.selector || 'id'](arg.name));
-                p.click();
+                await p.click();
                 break;
             case types[3]:
+                console.log("-----Process for "+arg.name+"");
                 p = await arg.driver.findElement(Config.webdriver.By[arg.selector || 'id'](arg.name));
-                p.click();
-                await sleeping(10000);
+                await p.click();
+                await sleeping(10000, "After " + arg.name);
+                if (arg.url) {
                 const check = await checkURL(arg.url, arg.driver)
                 if (!check) {
                     await arg.driver.quit();
                     throw "URL not matched for " + arg.name;
                 }
+              }
                 break;
             default:
                 break;
@@ -66,14 +75,15 @@ const callMe = async (arg) => {
     }
 }
 
-const sleeping = (time) => {
+const sleeping = (time,t) => {
+    console.log("========= Sleep Call " +t+"=============")
     return new Promise((resolve) => {
         setTimeout(resolve, time);
     })
 }
 
 const checkURL = async (url, driver) => {
-    await sleeping(1000);
+    console.log("-------Check URL for" + url+"---------");
     let CurrentURL = await driver.getCurrentUrl()
     if (CurrentURL.includes(url))
         return true
