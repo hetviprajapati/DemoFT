@@ -12,7 +12,8 @@ let delaySecond=Object.freeze({
 let  types = {
     0: 'input',
     1: 'click',
-    2: 'button'
+    2: 'button',
+    3:'executeScript'
 };
 
 const sleeping = (time,v) => {
@@ -25,16 +26,30 @@ const inputValue=(driver,arg)=>{
    return  driver.findElement(Config.webdriver.By[arg.selector || 'id'](arg.name)).sendKeys(arg.key);
 }
 
-const clickFn=(driver,arg)=>{
-    return  driver.findElement(Config.webdriver.By[arg.selector || 'id'](arg.name)).click().then(()=>sleeping(delaySecond[arg.delay]));
+const clearInputValue=(driver,arg)=>{
+    return  driver.findElement(Config.webdriver.By[arg.selector || 'id'](arg.name)).clear();
 }
 
-const ScrollDown=(driver,scrollValue)=>{
+const ExecuteScript=(driver,arg)=>{
+    return driver.executeScript(arg.ExecuteScript);
+}
+const clickFn=async  (driver,arg)=>{
+    if(arg.index)
+        return  driver.findElement(Config.webdriver.By[arg.selector || 'id'](arg.name))[arg.index].click().then(()=>sleeping(delaySecond[arg.delay]));
+    else
+        return  driver.findElement(Config.webdriver.By[arg.selector || 'id'](arg.name)).click().then(()=>sleeping(delaySecond[arg.delay]));
+}
+
+const Scroll=(driver,scrollValue)=>{
     return  driver.executeScript(`window.scrollBy(0,${scrollValue})`);
 }
 
 const getText=(driver,name,index,selector)=>{
      return driver.findElement(Config.webdriver.By[selector || 'id'](name)).getText();
+}
+
+const loginLinkClick = (driver) => {
+    return driver.executeScript("document.getElementsByClassName('guestNoteLogin')[0].getElementsByTagName('a')[0].click()").then(() => sleeping(delaySecond.ten));
 }
 
 const checkURL = async (url, driver,name) => {
@@ -46,29 +61,40 @@ const checkURL = async (url, driver,name) => {
 }
 
 const callMe = async (driver,arg) => {
-    try {
         switch (arg.type) {
             case types[0] :
-                inputValue(driver,arg);
+                if(arg.isClear)
+                    await clearInputValue(driver,arg);
+                await  inputValue(driver,arg);
+                if (arg.scroll) {
+                    await Scroll(driver,arg.scroll)
+                }
                 break;
             case types[1] :
-                if (arg.scrollDown) {
-                    ScrollDown(driver,arg.scrollDown)
+                if (arg.scroll) {
+                   await Scroll(driver,arg.scroll)
                 }
+                await  clickFn(driver,arg);
                 if(arg.testContent){
-                   await testContentByArray(driver,arg.testContent);
+                  await testContentByArray(driver,arg.testContent);
                 }
-                clickFn(driver,arg);
                 break;
             case types[2]:
-                clickFn(driver,arg).then(()=>checkURL(arg.url, driver,arg.name));
+                if(arg.isAlert)
+                {
+                    await clickFn(driver,arg).then(()=>handleAlertOK(driver,arg));
+                    if(arg.scroll)
+                        await Scroll(driver,arg.scroll)
+                }
+                else
+                    clickFn(driver,arg).then(()=>checkURL(arg.url, driver,arg.name));
                 break;
+            case types[3]:
+                   ExecuteScript(driver,arg).then(()=>checkURL(arg.url, driver,arg.name));
+                 break;
             default:
                 break;
         }
-    } catch (e) {
-        console.log("---ERROR---", e);
-    }
 }
 
 const funProcess=async (driver,obj)=>{
@@ -91,35 +117,73 @@ const testContentByArray=async (driver, contentArray)=> {
             }
         })
         if (contentNotMatchArray.length > 0)
-           throw contentNotMatchArray.join();
+            return Promise.reject(contentNotMatchArray.join());
+
         return Promise.resolve();
     })
+}
+
+const handleAlertOK = (driver,arg) => {
+    return driver.switchTo().alert().accept().then(() => sleeping(delaySecond[arg.delay]));
 }
 
 const handleOutput=(d, pc, flow) =>{
     return pc.then(() => {
             process.on('unhandledRejection', (reason, promise) => {});
-            console.log('all ' + flow + ' Integration Test passed successfully Done');
+           console.log('\x1b[32m%s\x1b[0m', 'All ' + flow + ' Integration Test passed successfully Done');
             return d.quit()
         }
     ).catch((reason) => {
-        console.log('fail');
-        console.log( flow + ' Integration Test Failed  \n' + reason);
+        console.log('\x1b[31m%s\x1b[0m', reason + '\n' + flow + ' Integration Test Failed ');
         return d.quit();
     })
 }
 
+const handlePDF =async (d) => {
+    let windows=await d.getAllWindowHandles();
+    await  sleeping(delaySecond.twenty);
+    await d.switchTo().window(windows[1]);
+    let url=await d.getCurrentUrl();
+    console.log(url);
+    return  url;
+};
+
+const ConvertPdfToText=(pdfUrl)=>{
+    // let pdf = PDFJS.getDocument(pdfUrl);
+    // return pdf.then(function(pdf) { // get all pages text
+    //     let maxPages = pdf.pdfInfo.numPages;
+    //     let countPromises = []; // collecting all page promises
+    //     for (let j = 1; j <= maxPages; j++) {
+    //         let page = pdf.getPage(j);
+    //
+    //         let txt = "";
+    //         countPromises.push(page.then(function(page) { // add page promise
+    //             let textContent = page.getTextContent();
+    //             return textContent.then(function(text){ // return content promise
+    //                 return text.items.map(function (s) { return s.str; }).join(''); // value page text
+    //             });
+    //         }));
+    //     }
+    //     // Wait for all pages and join text
+    //     return Promise.all(countPromises).then(function (texts) {
+    //         return texts.join('');
+    //     });
+    // });
+}
 module.exports={
     types,
     delaySecond,
     sleeping,
-    inputValue,
     clickFn,
     getText,
-    ScrollDown,
+    Scroll,
+    loginLinkClick,
     checkURL,
     callMe,
     funProcess,
     handleOutput,
-    testContentByArray
+    testContentByArray,
+    handleAlertOK,
+    ConvertPdfToText,
+    handlePDF
 }
