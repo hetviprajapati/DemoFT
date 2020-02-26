@@ -1,5 +1,8 @@
 let Config = require('./config');
 
+let PDFJS = require('pdfjs-dist');
+let worker=require('pdfjs-dist/build/pdf.worker.entry');
+
 let delaySecond=Object.freeze({
     "one":1,
     "two":2,
@@ -33,6 +36,7 @@ const clearInputValue=(driver,arg)=>{
 const ExecuteScript=(driver,arg)=>{
     return driver.executeScript(arg.ExecuteScript);
 }
+
 const clickFn=async  (driver,arg)=>{
     if(arg.index)
         return  driver.findElement(Config.webdriver.By[arg.selector || 'id'](arg.name))[arg.index].click().then(()=>sleeping(delaySecond[arg.delay]));
@@ -90,7 +94,7 @@ const callMe = async (driver,arg) => {
                     clickFn(driver,arg).then(()=>checkURL(arg.url, driver,arg.name));
                 break;
             case types[3]:
-                   ExecuteScript(driver,arg).then(()=>checkURL(arg.url, driver,arg.name));
+                   ExecuteScript(driver,arg).then(()=> {if(arg.ur) checkURL(arg.url, driver,arg.name)});
                  break;
             default:
                 break;
@@ -141,35 +145,38 @@ const handleOutput=(d, pc, flow) =>{
 
 const handlePDF =async (d) => {
     let windows=await d.getAllWindowHandles();
-    await  sleeping(delaySecond.twenty);
-    await d.switchTo().window(windows[1]);
+    await  sleeping(delaySecond.ten);
+    await d.switchTo().window(windows[2]);
     let url=await d.getCurrentUrl();
     console.log(url);
     return  url;
 };
 
-const ConvertPdfToText=(pdfUrl)=>{
-    // let pdf = PDFJS.getDocument(pdfUrl);
-    // return pdf.then(function(pdf) { // get all pages text
-    //     let maxPages = pdf.pdfInfo.numPages;
-    //     let countPromises = []; // collecting all page promises
-    //     for (let j = 1; j <= maxPages; j++) {
-    //         let page = pdf.getPage(j);
-    //
-    //         let txt = "";
-    //         countPromises.push(page.then(function(page) { // add page promise
-    //             let textContent = page.getTextContent();
-    //             return textContent.then(function(text){ // return content promise
-    //                 return text.items.map(function (s) { return s.str; }).join(''); // value page text
-    //             });
-    //         }));
-    //     }
-    //     // Wait for all pages and join text
-    //     return Promise.all(countPromises).then(function (texts) {
-    //         return texts.join('');
-    //     });
-    // });
+const ConvertPdfToText=async (d,pdfUrl)=> {
+
+    PDFJS.GlobalWorkerOptions.workerSrc = worker;
+    try{
+        let loadingTask =await PDFJS.getDocument(pdfUrl);
+        let maxPage=loadingTask._pdfInfo.numPages;
+        console.log(maxPage);
+        for (let i=1;i<=maxPage;i++)
+        {
+            let pdfPage=await loadingTask.getPage(i)
+            let textContent=await pdfPage.getTextContent();
+
+            let textItems = textContent.items;
+            let finalString = "";
+            for (let i = 0; i < textItems.length; i++) {
+                let item = textItems[i];
+                finalString += item.str + " ";
+            }
+            alert(finalString);
+        }
+    }catch (e) {
+        console.log("Error",e);
+    }
 }
+
 module.exports={
     types,
     delaySecond,

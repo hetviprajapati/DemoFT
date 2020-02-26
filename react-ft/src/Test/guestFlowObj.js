@@ -37,10 +37,10 @@ const guestHome=async (driver,index,title,size)=>{
 const guestTabSize = ()=>{
     let GuestTabSize = [
         {name: 'width', key: '1000', type:cf.types[0],delay:'one'},
-        {name: 'height', key: '3000', type:cf.types[0],delay:'one',scroll:200},
+        {name: 'height', key: '2000', type:cf.types[0],delay:'one',scroll:200},
         {name:'nextTitle',type:cf.types[2],url: Config.Base_URL + '?tab=color&',delay:'ten',selector: 'className',isAlert:true,scroll:-100},
-        {name: 'width', key: '10000', type:cf.types[0],delay:'one',isClear:true},
-        {name: 'height', key: '3000', type:cf.types[0],delay:'ten',isClear:true},
+        {name: 'width', key: '1000', type:cf.types[0],delay:'one',isClear:true},
+        {name: 'height', key: '2000', type:cf.types[0],delay:'ten',isClear:true},
         {name:'panels-12',type:cf.types[1],scroll:400,delay:'five'},
         {name:'swingDirection-left',type:cf.types[1],scroll:800,delay:'five',testContent:['£8,880.00']},
         {name:'swingInOrOut-Outswing',type:cf.types[1],scroll:1000,delay:'five'},
