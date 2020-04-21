@@ -1,0 +1,433 @@
+config.js
+---------------------------------------------------------------
+const webdriver = require('selenium-webdriver');
+const user = 'username of browserstack';
+const secret = 'secret';
+const BASE_URL = 'https://test-uk.rioft.com/';
+const SERVER_URL = 'http://hub.browserstack.com/wd/hub';
+
+//optional
+const SALES_PERSON_USERNAME = 'admin';
+const SALES_PERSON_PASSWORD = 'test';
+
+const isSuccess = [];
+
+const Capabilities = {
+    "mac_mojave_safari_1920_1080": {
+        'browserName': 'Safari',
+        'browser_version': '12.0',
+        'os': 'OS X',
+        'os_version': 'Mojave',
+        'resolution': '1920x1080',
+        'browserstack.user': user,
+        'browserstack.key': secret
+    },
+};
+
+const ChromeCapabilities = {
+    "mac_mojave_chrome_1920_1080": {
+        'browserName': 'Chrome',
+        'browser_version': '75.0',
+        'os': 'OS X',
+        'os_version': 'Mojave',
+        'resolution': '1920x1080',
+        'chromeOptions': { 'args': ['start-fullscreen'] },
+        'browserstack.user': user,
+        'browserstack.key': secret
+    },
+};
+
+function getDriver(Capability) {
+    return new webdriver.Builder().usingServer(SERVER_URL).withCapabilities(Capability).build();
+};
+
+module.exports = { user, secret, Capabilities, BASE_URL, SERVER_URL, getDriver,
+    SALES_PERSON_USERNAME, SALES_PERSON_PASSWORD,
+    isSuccess,
+    ChromeCapabilities
+};
+
+-------------------------------------------------------------
+commonFunctions:
+-------------------------------------------------------------
+
+var request = require("request-promise");
+const config = require('../config/config');
+var delaySecond = Object.freeze(
+    {
+        "one": 1,
+        "two": 2,
+        "three": 3,
+        "four": 4,
+        "five": 5,
+        "six": 6,
+        "seven": 7,
+        "eight": 8,
+        "nine": 9,
+        "ten": 10,
+        "twenty": 20,
+        "thirty": 30
+    }
+);
+const API_base_URI = "https://" + config.user + ":" + config.secret + "@www.browserstack.com/automate/"
+const GUEST_CALL_NUMBER = 'Call to Order Now:  0114 322 1500';
+const disclaimerText = "All doors and windows are custom built to the customers specifications. Panoramic Doors can not take responsibility of any products that are ordered incorrectly. If you have any questions regarding any detail on this page, please contact Panoramic Doors directly for clarification. No verbal changes will be recognized. If any changes are needed, the order must be corrected and initialed approved version of this page must be received by Panoramic Doors.";
+
+function getSessionId(d) {
+    return d.getSession().then(function (session) {
+        return session.id_;
+    });
+}
+
+function callAPI(uri, method, form) {
+    return request({
+        uri,
+        method,
+        form
+    });
+}
+
+function markFailed(d, reason) {
+    return getSessionId(d)
+        .then((sessionId) => {
+            let form = {
+                "status": "failed",
+                reason
+            }
+            return callAPI(API_base_URI + "sessions/" + sessionId + ".json", 'PUT', form)
+        })
+}
+
+function changeSessionTestName(d, name) {
+    return getSessionId(d)
+        .then((sessionId) => {
+            let form = {
+                name
+            }
+            return callAPI(API_base_URI + "sessions/" + sessionId + ".json", 'PUT', form)
+        })
+}
+
+function test(driver, title, url, urlIsContain, content) {
+    let promises = [];
+    title && promises.push(testTitle(driver, title));
+    url && promises.push(testURL(driver, url, urlIsContain));
+    content && promises.push(testContent(driver, url));
+    return Promise.all(promises).then(function (values) {
+        let isTestPassed = true;
+        let reasonsArray = [];
+        values.forEach(function (e, i) {
+            if (!e.isTestPassed) {
+                isTestPassed = false;
+                reasonsArray.push(e.reason);
+            }
+        });
+        let reasons = reasonsArray.join();
+        if (isTestPassed)
+            return true;
+        else
+            throw reasons;
+    });
+}
+
+function testTitle(driver, title) {
+    return driver.getTitle().then(function (t) {
+        if (title !== t) {
+            let reason = 'expected title "' + title + '" is not getting matched with retrieved title "' + t + '"'
+            return {isTestPassed: false, reason};
+        }
+        return {isTestPassed: true};
+    })
+}
+
+function testURL(driver, url, isContain) {
+    return driver.getCurrentUrl().then(function (u) {
+        if ((!isContain && url !== u) || (!!isContain && u.indexOf(url) < 0)) {
+            let reason = ''
+            if (!isContain)
+                reason = 'expected url "' + url + '" is not getting matched with retrieved url "' + u + '"'
+            else
+                reason = 'expected url "' + url + '" is not part of retrieved url "' + u + '"'
+            return {isTestPassed: false, reason};
+        }
+        return {isTestPassed: true};
+    })
+}
+
+function testContent(driver, content) {
+    return driver.getPageSource().then(function (p) {
+        if (p.indexOf(content) < 0) {
+            let reason = '"' + content + '" is not found in page source'
+            return {isTestPassed: false, reason};
+        }
+        return {isTestPassed: true};
+    })
+}
+
+function testContentByArray(driver, contentArray) {
+    let contentNotMatchArray = []
+    return driver.getPageSource().then(function (p) {
+        contentArray.forEach((content) => {
+            if (p.indexOf(content) < 0) {
+                contentNotMatchArray.push('"' + content + '" is not found in page source')
+            }
+        })
+        if (contentNotMatchArray.length > 0)
+            return Promise.reject(contentNotMatchArray.join());
+        return Promise.resolve();
+    })
+}
+
+function testNotExistsContent(driver, contentArray) {
+    let contentNotMatchArray = []
+    return driver.getPageSource().then(function (p) {
+        contentArray.forEach((content) => {
+            if (p.indexOf(content) > 0) {
+                contentNotMatchArray.push('"' + content + '" is  found in page source')
+            }
+        })
+        if (contentNotMatchArray.length > 0)
+            return Promise.reject(contentNotMatchArray.join());
+        return Promise.resolve();
+    })
+}
+
+function delayBySecond(t, v) {
+    return new Promise(function (resolve) {
+        setTimeout(resolve.bind(null, v), t * 1000)
+    });
+}
+
+function handleOutput(d, pc, capability, testsuite) {
+    return pc.then(() => {
+            process.on('unhandledRejection', (reason, promise) => {});
+            config.isSuccess.push('pass');
+            console.log('\x1b[32m%s\x1b[0m', 'all ' + testsuite + ' Integration Test passed successfully for ' + capability);
+            return d.quit()
+        }
+    ).catch((reason) => {
+        return markFailed(d, reason).then(() => {
+            config.isSuccess.push('fail');
+            console.log('\x1b[31m%s\x1b[0m', testsuite + ' Integration Test Failed (for ' + capability + ') \n' + reason);
+            return d.quit();
+        });
+    })
+}
+
+const testAlertText = async (d, text) => {
+    let str = await d.switchTo().alert().getText();
+    if (text !== str) {
+        let reason = 'expected text "' + text + '" is not getting matched with retrieved text "' + str + '"'
+        return {isTestPassed: false, reason};
+    }
+    return {isTestPassed: true};
+}
+
+function testAlertData(driver, text) {
+    let promises = [];
+    text && promises.push(testAlertText(driver, text));
+    return Promise.all(promises).then(function (values) {
+        let isTestPassed = true;
+        let reasonsArray = [];
+        values.forEach(function (e, i) {
+            if (!e.isTestPassed) {
+                isTestPassed = false;
+                reasonsArray.push(e.reason);
+            }
+        });
+        let reasons = reasonsArray.join();
+        if (isTestPassed)
+            return true;
+        else
+            throw reasons;
+    });
+}
+
+const testButtonTitle = async (d,expectedTitle,script) => {
+    let tname = await d.executeScript(script);
+    let promises = [], reasonsArray = [], isTestPassed = true;
+    if(expectedTitle === tname)
+        promises.push(true);
+    else {
+        promises.push(false);
+        isTestPassed = false;
+        reasonsArray.push(`Expected button title ${expectedTitle} is not matched with retrieved button title ${tname}`);
+    }
+
+    return Promise.all(promises).then(function () {
+        let reasons = reasonsArray.join();
+        if (isTestPassed)
+            return true;
+        else
+            throw reasons;
+    });
+};
+
+const testButtonStyle = async (d,expectedStyle,name,script) => {
+    let sname = await d.executeScript(script);
+    let promises = [], reasonsArray = [], isTestPassed = true;
+    if(expectedStyle === sname)
+        promises.push(true);
+    else {
+        promises.push(false);
+        isTestPassed = false;
+        reasonsArray.push(`${name} button is Exists`);
+    }
+
+    return Promise.all(promises).then(function () {
+        let reasons = reasonsArray.join();
+        if (isTestPassed)
+            return true;
+        else
+            throw reasons;
+    });
+};
+
+
+const handleAlertOK = (d, wd) => {
+    return d.switchTo().alert().accept().then(() => delayBySecond(delaySecond.twenty));
+}
+
+const handleAlertCancel = (d, wd) => {
+    return d.switchTo().alert().dismiss().then(() => delayBySecond(delaySecond.ten));
+}
+
+const navigateBack = (d, wd) => {
+    return d.navigate().back().then(() => delayBySecond(delaySecond.ten));
+}
+
+module.exports = {changeSessionTestName, test, testContentByArray, testAlertData, delayBySecond, delaySecond, handleOutput,
+    formatNumber,
+    handleAlertOK,
+    handleAlertCancel,
+    testNotExistsContent,
+    GUEST_CALL_NUMBER,
+    disclaimerText,
+    testButtonTitle,
+    testButtonStyle,
+    navigateBack
+};
+
+
+
+
+-------------------------------------------------------
+testRunnerFile
+-------------------------------------------------------
+const cf = require('./FT/commonFunctions/cf');
+const login = require('./login_steps');
+const create_quote = require('./create_quote_steps');
+
+const Config = require('./FT/config/config');
+
+let pc;
+pc = cf.delayBySecond(3);
+
+const browsers = Object.getOwnPropertyNames(Config.Capabilities);
+const chromeBrowsers = Object.getOwnPropertyNames(Config.ChromeCapabilities);
+
+if (process.argv.length === 3) {
+    switch (process.argv[2].toLowerCase()) {
+        case 'login':
+            return loginStep(pc).then(() => {
+                caseSummary();
+                return;
+            });
+        case 'createquote':
+            return createQuoteStep(pc).then(() => {
+                caseSummary();
+                return;
+            });
+
+        default: {
+            console.log('\x1b[31m%s\x1b[0m', process.argv[2] + ' test not found');
+        }
+
+    }
+} else {
+    executeAll(pc).then(() => {
+        caseSummary();
+    });
+}
+
+function caseSummary() {
+    let passCount = filterCase('pass');
+    let failCount = filterCase('fail');
+    console.log('\x1b[33m%s\x1b[1m', '\n-------------TEST CASE-------------');
+    console.log('\x1b[32m%s\x1b[1m', 'Pass : ' + passCount);
+    console.log('\x1b[31m%s\x1b[0m', 'Fail : ' + failCount);
+    console.log('\x1b[33m%s\x1b[0m', '-----------------------------------\n');
+    if(failCount > 0) {
+        process.exit(1);
+    }
+    process.exit(0);
+}
+
+function filterCase(caseResult) {
+    var count = 0;
+    Config.isSuccess.filter(value => {
+        if(value === caseResult){
+            count = count + 1;
+        }
+    });
+    return count;
+}
+
+function loginStep(pc) {
+    for (let i = 0; i < browsers.length; i++) {
+        pc = pc.then(() => login.login_step(browsers[i]));
+    }
+    return pc;
+}
+
+function createQuoteStep(pc) {
+    for (let i = 0; i < chromeBrowsers.length; i++) {
+        pc = pc.then(() => create_quote.create_quote_step(chromeBrowsers[i]));
+    }
+    return pc;
+}
+
+
+
+
+function executeAll(pc) {
+    pc = loginStep(pc);
+   
+    pc = createQuoteStep(pc);
+
+    return pc;
+}
+
+
+------------------------------------------------------
+loginStep.js
+-----------------------------------------------------
+
+const wd = require('selenium-webdriver');
+const Config = require('./FT/config/config');
+const login = require('./FT/login_fn');
+const cf = require('./FT/commonFunctions/cf');
+
+let _u = undefined;
+
+function login_step(capability) {
+    let d = Config.getDriver(Config.Capabilities[capability]);     
+    d.manage().window().maximize();
+    let pc;
+    pc = d.get(Config.BASE_URL).then(() => cf.changeSessionTestName(d, 'UK: Login'));
+    // pc = pc.then(() => d.get(Config.BASE_URL + "?tab=signIn"));
+    pc = pc.then(() => login.loginLinkClick(d, wd)).then(() => cf.test(d, 'Sales Quoter', _u, _u, _u));
+
+    // ADMIN LOGIN
+    pc = pc.then(() => login.EmailInput(d, wd, Config.SALES_PERSON_USERNAME)).then(() => cf.test(d, 'Sales Quoter', _u, _u, _u));
+    pc = pc.then(() => login.PasswordInput(d, wd, Config.SALES_PERSON_PASSWORD)).then(() => cf.test(d, 'Sales Quoter', _u, _u, _u));
+    pc = pc.then(() => login.signIn(d, wd)).then(() => cf.test(d, 'Sales Quoter', Config.BASE_URL + '?tab=home', true, _u));
+    pc = pc.then(() => login.menuClick(d, wd)).then(() => cf.test(d, 'Sales Quoter', Config.BASE_URL + '?tab=home', true, _u));
+    pc = pc.then(() => login.signOutClick(d, wd)).then(() => cf.test(d, 'signIn', Config.BASE_URL , true, _u));
+
+_u));
+
+    return cf.handleOutput(d, pc, capability, 'Login');
+}
+
+module.exports = {login_step};
