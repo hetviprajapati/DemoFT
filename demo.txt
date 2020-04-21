@@ -431,3 +431,39 @@ _u));
 }
 
 module.exports = {login_step};
+
+
+----------------------------
+loginStep_fn.js
+----------------------------
+const cf = require('./commonFunctions/cf');
+
+const signIn = (d, wd) => {
+    return d.findElement(wd.By.id("signInButton")).click().then(() => cf.delayBySecond(cf.delaySecond.thirty));
+};
+
+const EmailInput = (d, wd, value) => {
+    return d.findElement(wd.By.id("email")).sendKeys(value);
+};
+
+const PasswordInput = (d, wd, value) => {
+    return d.findElement(wd.By.id("password")).sendKeys(value);
+};
+
+const menuClick = (d, wd) => {
+    return d.findElement(wd.By.id("headerRightMenu")).click().then(() => cf.delayBySecond(cf.delaySecond.two));
+};
+
+const menuItemClick = (d, wd, index) => {
+    return d.executeScript("document.getElementById('menuOptions').getElementsByClassName('menuRows')[" + index + "].click()").then(() => cf.delayBySecond(cf.delaySecond.two));
+};
+
+const signOutClick = (d) => {
+    return d.executeScript("document.getElementById('menuOptions').lastElementChild.click()").then(() => cf.delayBySecond(cf.delaySecond.two));
+};
+
+const loginLinkClick = (d, wd) => {
+    return d.executeScript("document.getElementsByClassName('guestNoteLogin')[0].getElementsByTagName('a')[0].click()").then(() => cf.delayBySecond(cf.delaySecond.twenty));
+}
+
+module.exports = {signIn, EmailInput, PasswordInput, menuClick, signOutClick, menuItemClick, loginLinkClick};
